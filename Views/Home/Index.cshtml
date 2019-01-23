@@ -1,0 +1,60 @@
+﻿@using System.IO;
+
+@model RssListViewModel
+
+@{
+    ViewData["Title"] = "Home Page";
+}
+
+<div class="text-center">
+
+    <h3 class="pt-2">Current directory is @Model.CurrentDir.FullName</h3>
+    <div class="list-group-item list-group-item-action" >
+        <a class="list-group-item list-group-item-action" 
+            asp-controller="rss"
+            asp-route-path="@Model.CurrentDir.FullName"
+            data-copy-href>
+            Current dir RSS <button class="btn btn-primary">copy url</button>
+        </a>
+        <a class="list-group-item list-group-item-action" 
+            asp-controller="rss" 
+            asp-route-path="@Model.CurrentDir.FullName" 
+            asp-route-recursive="true"
+            data-copy-href>
+            Recursive RSS <button class="btn btn-primary">copy url</button>
+        </a>
+    </div> 
+
+    <h3 class="pt-4">Navigate</h3>
+    <div class="list-group">
+        @if(Model.DisplayParentLink){
+                <a class="list-group-item list-group-item-action" 
+                    asp-controller="home" 
+                    asp-route-path="@Model.CurrentDir.Parent.FullName">
+                    ..
+                </a>
+        }
+               
+        @foreach (DirectoryInfo dirInfo in Model.Directories)
+        {
+            <a  class="list-group-item list-group-item-action" 
+                asp-controller="home" 
+                asp-route-path="@dirInfo.FullName">
+                @dirInfo.Name/
+            </a>
+        }
+
+        <h3 class="pt-4">Files in directory @Model.CurrentDir.FullName</h3>
+        <div class="list-group">
+        @foreach (FileInfo fileInfo in Model.Files)
+        {
+            <a  class="list-group-item list-group-item-action"
+                asp-controller="rss"
+                asp-action="getfile"
+                asp-route-path="@System.Net.WebUtility.UrlEncode(fileInfo.FullName)">
+                @fileInfo.Name
+            </a>
+        }
+        </div>
+    </div>
+</div>

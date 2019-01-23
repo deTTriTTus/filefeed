@@ -1,0 +1,13 @@
+version: "2"
+services:
+  filefeed:
+    image: filefeed
+    container_name: filefeed
+    environment:
+      - PUID=1000
+      - PGID=1000
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /nas/media:/files
+    ports:
+      - 8080:80
