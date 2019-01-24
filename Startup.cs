@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.StaticFiles;
+using Microsoft.AspNetCore.HttpOverrides;
 
 namespace filefeed
 {
@@ -26,12 +27,26 @@ namespace filefeed
         {
             services.AddSingleton<IContentTypeProvider, FileExtensionContentTypeProvider>();
 
+            services.Configure<ForwardedHeadersOptions>(options =>
+            {
+                options.ForwardedHeaders =
+                    ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+            });
+
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IHostingEnvironment env)
         {
+            var forwardingOptions = new ForwardedHeadersOptions()
+            {
+                ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+            };
+            forwardingOptions.KnownNetworks.Clear(); //its loopback by default
+            forwardingOptions.KnownProxies.Clear();
+            app.UseForwardedHeaders(forwardingOptions);
+
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();

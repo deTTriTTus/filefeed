@@ -32,7 +32,7 @@ namespace filefeed.Controllers
             {
                 Title = $"filefeed for {baseDirInfo.Name}",
                 Description = $"{(recursive ? "Recursive " : "")}Filefeed generated feed for {baseDirInfo.FullName}",
-                Link = new Uri(HttpContext.Request.Path),
+                Link = new Uri($"{HttpContext.Request.Scheme}://{HttpContext.Request.Host.Value}"),
             };
 
             var files = baseDirInfo.EnumerateFiles(
