@@ -9,18 +9,24 @@
 <div class="text-center">
 
     <h3 class="pt-2">Current directory is @Model.CurrentDir.FullName</h3>
-    <div class="list-group-item list-group-item-action" >
+          <div class="form-group">
+            <label for="title">Title or RSS</label>
+            <input type="text" class="form-control" id="title" value="@Model.CurrentDir.Name">
+        </div>
+        <div class="list-group-item list-group-item-action" >
         <a class="list-group-item list-group-item-action" 
             asp-controller="rss"
             asp-route-path="@Model.CurrentDir.FullName"
-            data-copy-href>
+            data-copy-href
+            onclick="window.location = this.href + '?title=' + document.querySelector('input#title').value;return false;">
             Current dir RSS <button class="btn btn-primary">copy url</button>
         </a>
         <a class="list-group-item list-group-item-action" 
             asp-controller="rss" 
             asp-route-path="@Model.CurrentDir.FullName" 
             asp-route-recursive="true"
-            data-copy-href>
+            data-copy-href
+            onclick="window.location = this.href + '&title=' + document.querySelector('input#title').value;return false;">
             Recursive RSS <button class="btn btn-primary">copy url</button>
         </a>
     </div> 

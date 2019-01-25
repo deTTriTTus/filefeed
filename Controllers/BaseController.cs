@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using System.IO;
 using System.Linq;
-using WilderMinds.RssSyndication;
 using filefeed.Models;
 
 namespace filefeed.Controllers

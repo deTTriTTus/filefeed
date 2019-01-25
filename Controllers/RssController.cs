@@ -6,7 +6,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using System.IO;
 using System.Linq;
-using WilderMinds.RssSyndication;
+using System.Xml;
+using System.ServiceModel.Syndication;
 using filefeed.Models;
 using Microsoft.AspNetCore.StaticFiles;
 
@@ -22,62 +23,77 @@ namespace filefeed.Controllers
         }
 
         [HttpGet("rss/{path?}")]
-        public FileResult Index(string path, bool recursive = false)
+        public FileResult Index(string path, bool recursive = false, string title = null)
         {
             path = ValidatePath(path);
 
             var baseDirInfo = new DirectoryInfo(path);
 
-            Feed feed = new Feed()
+            var feed = new SyndicationFeed(
+                title ?? baseDirInfo.Name,
+                $"{(recursive ? "Recursive " : "")}Filefeed generated feed for {baseDirInfo.FullName}",
+                new Uri($"{HttpContext.Request.Scheme}://{HttpContext.Request.Host.Value}")
+            );
+
+            var folderImage = baseDirInfo.GetFiles("folder.*").FirstOrDefault();
+            if (folderImage != null)
             {
-                Title = $"filefeed for {baseDirInfo.Name}",
-                Description = $"{(recursive ? "Recursive " : "")}Filefeed generated feed for {baseDirInfo.FullName}",
-                Link = new Uri($"{HttpContext.Request.Scheme}://{HttpContext.Request.Host.Value}"),
-            };
+                feed.ImageUrl = new Uri($"{HttpContext.Request.Scheme}://{HttpContext.Request.Host.Value}" + Url.Action("GetFile", new { Path = folderImage.FullName }));
+            }
 
             var files = baseDirInfo.EnumerateFiles(
                 "*",
                 new EnumerationOptions { RecurseSubdirectories = recursive })
-                    .Where(x => !x.Attributes.HasFlag(FileAttributes.Hidden))
+                    .Where(x => !x.Attributes.HasFlag(FileAttributes.Hidden) && !x.Name.ToLower().StartsWith("folder."))
                     .Take(100)
                     .OrderBy(x => x.FullName);
 
-            feed.Items = new List<Item>(files.Count());
+            var items = new List<SyndicationItem>(files.Count());
 
             //We fake the date to get a publish date in the same order as alphabetical
             var pubDate = new DateTime(DateTime.Now.Year - 1, 1, 1, 12, 0, 0);
             foreach (var file in files)
             {
-                var enclosure = new Enclosure();
-                enclosure.Values.Add(
-                    "url",
-                    $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host.Value}" + Url.Action("GetFile", new { Path = file.FullName })
-
-                );
-                enclosure.Values.Add("length", file.Length.ToString());
                 if (!_contentTypeProvider.TryGetContentType(file.Name, out var type))
                 {
                     type = System.Net.Mime.MediaTypeNames.Application.Octet;
                 }
-                enclosure.Values.Add("type", type);
 
-                var item = new Item
+                var item = new SyndicationItem
                 {
-                    Title = file.Name,
-                    Permalink = Url.Action("GetFile", new { Path = file.FullName }),
-                    Enclosures = new List<Enclosure>() { enclosure },
-                    PublishDate = pubDate
+                    Title = new TextSyndicationContent(file.Name),
+                    Id = Url.Action("GetFile", new { Path = file.FullName }),
+                    PublishDate = pubDate,
                 };
+                item.Links.Add(SyndicationLink.CreateMediaEnclosureLink(
+                    new Uri($"{HttpContext.Request.Scheme}://{HttpContext.Request.Host.Value}" + Url.Action("GetFile", new { Path = file.FullName })),
+                    type,
+                    file.Length));
                 pubDate = pubDate.AddDays(1);
 
-                feed.Items.Add(item);
+                items.Add(item);
             }
+            feed.Items = items;
 
-            var rss = feed.Serialize().Replace("utf-16", "utf-8");
+            var settings = new XmlWriterSettings
+            {
+                Encoding = System.Text.Encoding.UTF8,
+                NewLineHandling = NewLineHandling.Entitize,
+                NewLineOnAttributes = true,
+                Indent = true
+            };
 
-            byte[] byteArray = System.Text.Encoding.UTF8.GetBytes(rss);
-
-            return File(byteArray, System.Net.Mime.MediaTypeNames.Text.Xml);
+            Rss20FeedFormatter rssFormatter = new Rss20FeedFormatter(feed);
+            rssFormatter.SerializeExtensionsAsAtom = false;
+            using (var stream = new MemoryStream())
+            {
+                using (var writer = XmlWriter.Create(stream, settings))
+                {
+                    rssFormatter.WriteTo(writer);
+                    writer.Flush();
+                    return File(stream.ToArray(), "application/rss+xml; charset=utf-8");
+                }
+            }
         }
 
         [HttpGet("GetFile/{path}")]

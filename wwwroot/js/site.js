@@ -34,7 +34,18 @@ var links = document.querySelectorAll("[data-copy-href] button");
 
 for (var i = 0; i < links.length; i++) {
   links[i].addEventListener("click", function(event) {
-    copyTextToClipboard(this.parentElement.href);
+    var href = this.parentElement.href;
+
+    if (href.indexOf("?") >= 0) {
+      href += "&";
+    } else {
+      href += "?";
+    }
+
+    copyTextToClipboard(
+      href + "title=" + document.querySelector("input#title").value
+    );
     event.preventDefault();
+    event.stopPropagation();
   });
 }
